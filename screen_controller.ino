@@ -8,6 +8,7 @@
 #define DN_IN 1
 #define UP_OUT 4
 #define DN_OUT 3
+#define POT_IN 1
 
 // bedouncing
 unsigned long last_up_bedounce = 0;
@@ -20,9 +21,9 @@ int last_dn_state = HIGH;
 
 // ranges for pot to time mapping
 #define POT_MIN 0
-#define POT_MAX 255
+#define POT_MAX 1023
 #define TIME_MIN 0
-#define TIME_MAX 5000
+#define TIME_MAX 14000
 
 // time
 unsigned long current_time;
@@ -39,6 +40,7 @@ void setup() {
   pinMode(DN_IN, INPUT);
   pinMode(UP_OUT, OUTPUT);
   pinMode(DN_OUT, OUTPUT);
+
   digitalWrite(UP_OUT, HIGH);
   digitalWrite(DN_OUT, HIGH);
 
@@ -137,9 +139,9 @@ void update_total_time(){
 
 void update_desired_time() {
   // TODO: read from pot, map to desired_time
-  int pot_val = 69;
+  int pot_val = analogRead(POT_IN);
   desired_time = map(pot_val, POT_MIN, POT_MAX, TIME_MIN, TIME_MAX);
-  desired_time = 2400;  // DEBUG
+  // desired_time = 2400;  // DEBUG
 }
 
 bool at_lower_limit() {
