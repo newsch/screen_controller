@@ -13,10 +13,10 @@
 unsigned long last_up_debounce = 0;
 unsigned long last_dn_debounce = 0;
 int debounce_delay = 100;
-int up_state;
-int dn_state;
-int last_up_state;
-int last_dn_state;
+int up_state = LOW;
+int dn_state = LOW;
+int last_up_state = HIGH;
+int last_dn_state = HIGH;
 
 // ranges for pot to time mapping
 #define POT_MIN 0
@@ -70,11 +70,13 @@ void loop() {
 
   if ((millis() - last_up_debounce) > debounce_delay) {
     if (up_reading != up_state) {
+      last_up_state = upstate;
       up_state = up_reading;
     }
   }
   if ((millis() - last_dn_debounce) > debounce_delay) {
     if (dn_reading != dn_state) {
+      last_dn_state = dn_state;
       dn_state = dn_reading;
     }
   }
@@ -90,21 +92,25 @@ void loop() {
 }
 
 void lower_screen() {
+  is_rising = false;
   is_lowering = true;
   start_time = millis();
   // lower screen
   digitalWrite(DN_OUT, LOW);
   delay(200);
   digitalWrite(DN_OUT, HIGH);
+  update_total_time();
 }
 
 void raise_screen() {
+  is_lowering = false;
   is_rising = true;
   start_time = millis();
   // raise screen
   digitalWrite(UP_OUT, LOW);
   delay(200);
   digitalWrite(UP_OUT, HIGH);
+  update_total_time();
 }
 
 void stop_screen() {
@@ -122,11 +128,12 @@ void stop_screen() {
 
 void update_total_time(){
   current_time = millis();
-  if (is_rising) {  // update current time
+  if (is_rising) {  // update total time
     total_time -= current_time - start_time;
   } else if (is_lowering) {
     total_time += current_time - start_time;
   }
+  start_time = current_time;
 }
 
 void update_desired_time() {
