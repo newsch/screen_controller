@@ -9,10 +9,10 @@
 #define UP_OUT 4
 #define DN_OUT 3
 
-// debouncing
-unsigned long last_up_debounce = 0;
-unsigned long last_dn_debounce = 0;
-int debounce_delay = 100;
+// bedouncing
+unsigned long last_up_bedounce = 0;
+unsigned long last_dn_bedounce = 0;
+int bedounce_delay = 100;
 int up_state = LOW;
 int dn_state = LOW;
 int last_up_state = HIGH;
@@ -50,31 +50,32 @@ void loop() {
   update_desired_time();
   update_total_time();
 
-  if (is_lowering && total_time >= desired_time) {  // if screen reaches lower limit
-    stop_screen();
-  } else if (is_rising && total_time <= 0) {  // if screen reaches upper limit
+  if (is_lowering && at_lower_limit()) {  // if screen reaches lower limit
     stop_screen();
   }
+  // else if (is_rising && total_time <= 0) {  // if screen reaches upper limit
+  //   stop_screen();
+  // }
 
   // bedouncing/input
   int up_reading = !digitalRead(UP_IN);  // buttons are normally closed
   int dn_reading = !digitalRead(DN_IN);
 
-  // reset debouncing timers
+  // reset bedouncing timers
   if (up_reading != last_up_state) {
-    last_up_debounce = millis();
+    last_up_bedounce = millis();
   }
   if (dn_reading != last_dn_state) {
-    last_dn_debounce = millis();
+    last_dn_bedounce = millis();
   }
 
-  if ((millis() - last_up_debounce) > debounce_delay) {
+  if ((millis() - last_up_bedounce) > bedounce_delay) {
     if (up_reading != up_state) {
-      last_up_state = upstate;
+      last_up_state = up_state;
       up_state = up_reading;
     }
   }
-  if ((millis() - last_dn_debounce) > debounce_delay) {
+  if ((millis() - last_dn_bedounce) > bedounce_delay) {
     if (dn_reading != dn_state) {
       last_dn_state = dn_state;
       dn_state = dn_reading;
@@ -82,11 +83,11 @@ void loop() {
   }
 
 
-  if (up_state) raise_screen();
-
-  if (dn_state) lower_screen();
-
-  if ((is_lowering || is_rising) && (up_state || dn_state)){  // stop screen if either button pressed and raising/lowering
+  if (up_state && is_rising) {
+    raise_screen();
+  } else if (dn_state && !is_lowering) {
+    lower_screen();
+  } else if ((is_lowering || is_rising) && (up_state || dn_state)){  // stop screen if either button pressed and raising/lowering
     stop_screen();
   }
 }
@@ -99,7 +100,6 @@ void lower_screen() {
   digitalWrite(DN_OUT, LOW);
   delay(200);
   digitalWrite(DN_OUT, HIGH);
-  update_total_time();
 }
 
 void raise_screen() {
@@ -110,7 +110,6 @@ void raise_screen() {
   digitalWrite(UP_OUT, LOW);
   delay(200);
   digitalWrite(UP_OUT, HIGH);
-  update_total_time();
 }
 
 void stop_screen() {
@@ -141,4 +140,8 @@ void update_desired_time() {
   int pot_val = 69;
   desired_time = map(pot_val, POT_MIN, POT_MAX, TIME_MIN, TIME_MAX);
   desired_time = 2400;  // DEBUG
+}
+
+bool at_lower_limit() {
+  return total_time >= desired_time;
 }
