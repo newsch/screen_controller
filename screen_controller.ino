@@ -9,11 +9,20 @@
 #define UP_OUT 4
 #define DN_OUT 3
 
+// debouncing
+unsigned long last_up_debounce = 0;
+unsigned long last_dn_debounce = 0;
+int debounce_delay = 100;
+int up_state;
+int dn_state;
+int last_up_state;
+int last_dn_state;
+
 // ranges for pot to time mapping
 #define POT_MIN 0
-#define POT_MAX = 255
-#define TIME_MIN = 0
-#define TIME_MAX = 5000
+#define POT_MAX 255
+#define TIME_MIN 0
+#define TIME_MAX 5000
 
 // time
 unsigned long current_time;
@@ -47,12 +56,35 @@ void loop() {
     stop_screen();
   }
 
-  if (!digitalRead(UP_IN)) raise_screen();
+  // bedouncing/input
+  int up_reading = !digitalRead(UP_IN);  // buttons are normally closed
+  int dn_reading = !digitalRead(DN_IN);
 
-  if (!digitalRead(DN_IN)) lower_screen();
+  // reset debouncing timers
+  if (up_reading != last_up_state) {
+    last_up_debounce = millis();
+  }
+  if (dn_reading != last_dn_state) {
+    last_dn_debounce = millis();
+  }
 
-  if ((is_lowering || is_rising) && (!digitalRead(UP_IN) || !digitalRead(DN_IN))
-  {  // stop screen if either button pressed and raising/lowering
+  if ((millis() - last_up_debounce) > debounce_delay) {
+    if (up_reading != up_state) {
+      up_state = up_reading;
+    }
+  }
+  if ((millis() - last_dn_debounce) > debounce_delay) {
+    if (dn_reading != dn_state) {
+      dn_state = dn_reading;
+    }
+  }
+
+
+  if (up_state) raise_screen();
+
+  if (dn_state) lower_screen();
+
+  if ((is_lowering || is_rising) && (up_state || dn_state)){  // stop screen if either button pressed and raising/lowering
     stop_screen();
   }
 }
