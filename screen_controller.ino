@@ -3,7 +3,8 @@
   Creates a pseudo lower limit for the screen based on potentiometer value
 */
 
-#define DEBUG
+// #define DEBUG
+// #define CALIBRATE
 
 // pins
 #ifdef DEBUG
@@ -23,7 +24,7 @@
 // bedouncing
 unsigned long last_up_bedounce = 0;
 unsigned long last_dn_bedounce = 0;
-unsigned long bedounce_delay = 100;
+unsigned long bedounce_delay = 40;
 bool up_state = false;
 bool dn_state = false;
 bool last_up_reading = false;
@@ -37,6 +38,8 @@ bool last_dn_state = false;
 #define POT_MAX 1023
 #define TIME_MIN 0
 #define TIME_MAX 14000
+
+#define UP2DOWN .9 // account for difference between up and down speed
 
 // time
 unsigned long current_time;
@@ -61,8 +64,8 @@ void setup() {
   total_time = 0;
 
   #ifdef DEBUG
-    Serial.begin(9600);
-    Serial.println("PROGRAM STARTING");
+  Serial.begin(9600);
+  Serial.println("PROGRAM STARTING");
   #endif
 }
 
@@ -101,10 +104,12 @@ void loop() {
     #endif
     stop_screen();
   } else if (total_time <= 0 && is_rising) {
+    #ifdef CALIBRATE
+    stop_screen();
+    #endif
     is_rising = false;
-    // start_time = millis();
-    // update_total_time();
     total_time = 0;  // reset timer
+
     #ifdef DEBUG
     Serial.println("TOP\t" + String(total_time));
     #endif
@@ -125,6 +130,9 @@ void loop() {
 
 
 void lower_screen() {
+  #ifdef DEBUG
+  Serial.println("LOWER\t" + String(total_time));
+  #endif
   is_rising = false;
   is_lowering = true;
   start_time = millis();
@@ -132,12 +140,12 @@ void lower_screen() {
   digitalWrite(DN_OUT, LOW);
   delay(200);
   digitalWrite(DN_OUT, HIGH);
-  #ifdef DEBUG
-  Serial.println("LOWER\t" + String(total_time));
-  #endif
 }
 
 void raise_screen() {
+  #ifdef DEBUG
+  Serial.println("RAISE\t" + String(total_time));
+  #endif
   is_lowering = false;
   is_rising = true;
   start_time = millis();
@@ -145,9 +153,6 @@ void raise_screen() {
   digitalWrite(UP_OUT, LOW);
   delay(200);
   digitalWrite(UP_OUT, HIGH);
-  #ifdef DEBUG
-  Serial.println("RAISE\t" + String(total_time));
-  #endif
 }
 
 void stop_screen() {
@@ -170,7 +175,7 @@ void stop_screen() {
 void update_total_time(){
   current_time = millis();
   if (is_rising) {  // update total time
-    total_time -= current_time - start_time;
+    total_time -= round((current_time - start_time) * UP2DOWN);
   } else if (is_lowering) {
     total_time += current_time - start_time;
   }
