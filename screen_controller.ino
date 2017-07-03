@@ -5,6 +5,7 @@
 
 // #define DEBUG
 
+// pins
 #ifdef DEBUG
   #define UP_IN 4
   #define DN_IN 3
@@ -18,19 +19,13 @@
   #define DN_OUT 3
   #define POT_IN 1
 #endif
-// pins
-#define UP_IN 4
-#define DN_IN 3
-#define UP_OUT 12
-#define DN_OUT 13
-#define POT_IN 1
 
 // bedouncing
 unsigned long last_up_bedounce = 0;
 unsigned long last_dn_bedounce = 0;
-unsigned long bedounce_delay = 50;
-int up_state;
-int dn_state;
+unsigned long bedounce_delay = 25;
+int up_state = false;
+int dn_state = false;
 int last_up_state = false;
 int last_dn_state = false;
 
@@ -69,9 +64,6 @@ void setup() {
 }
 
 void loop() {
-  update_desired_time();
-  update_total_time();
-
   // bedouncing/input
   bool up_reading = !digitalRead(UP_IN);  // buttons are normally closed
   bool dn_reading = !digitalRead(DN_IN);
@@ -99,9 +91,17 @@ void loop() {
   last_up_state = up_reading;
   last_dn_state = dn_reading;
 
+  update_desired_time();
+  update_total_time();
+
+  // maing control flow
   if (at_lower_limit() && is_lowering) {
     stop_screen();
-  } else if (is_lowering && up_state || is_rising && dn_state) {  // stop screen if either button pressed and raising/lowering
+  } else if (total_time < 0 && is_rising) {
+    is_rising = false;
+    start_time = millis();
+    update_total_time();
+  } else if ((is_lowering && up_state) || (is_rising && dn_state)) {  // stop screen if either button pressed when raising/lowering
     stop_screen();
   } else if (up_state && !is_rising) {
     raise_screen();
