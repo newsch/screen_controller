@@ -3,7 +3,7 @@
   Creates a pseudo lower limit for the screen based on potentiometer value
 */
 
-// #define DEBUG
+#define DEBUG
 
 // pins
 #ifdef DEBUG
@@ -23,11 +23,14 @@
 // bedouncing
 unsigned long last_up_bedounce = 0;
 unsigned long last_dn_bedounce = 0;
-unsigned long bedounce_delay = 25;
-int up_state = false;
-int dn_state = false;
-int last_up_state = false;
-int last_dn_state = false;
+unsigned long bedounce_delay = 100;
+bool up_state = false;
+bool dn_state = false;
+bool last_up_reading = false;
+bool last_dn_reading = false;
+bool last_up_state = false;
+bool last_dn_state = false;
+
 
 // ranges for pot to time mapping
 #define POT_MIN 0
@@ -59,7 +62,7 @@ void setup() {
 
   #ifdef DEBUG
     Serial.begin(9600);
-    Serial.println("assup my dude");
+    Serial.println("PROGRAM STARTING");
   #endif
 }
 
@@ -71,44 +74,55 @@ void loop() {
   // dn_state = !digitalRead(DN_IN);
 
   // reset bedouncing timers
-  if (up_reading != last_up_state) {
+  if (up_reading != last_up_reading) {
     last_up_bedounce = millis();
   }
-  if (dn_reading != last_dn_state) {
+  if (dn_reading != last_dn_reading) {
     last_dn_bedounce = millis();
   }
 
   if ((millis() - last_up_bedounce) > bedounce_delay) {
-    if (up_reading != up_state) {
-      up_state = up_reading;
-    }
+    up_state = up_reading;
+
   }
   if ((millis() - last_dn_bedounce) > bedounce_delay) {
-    if (dn_reading != dn_state) {
-      dn_state = dn_reading;
-    }
+    dn_state = dn_reading;
   }
-  last_up_state = up_reading;
-  last_dn_state = dn_reading;
+  last_up_reading = up_reading;
+  last_dn_reading = dn_reading;
 
   update_desired_time();
   update_total_time();
 
-  // maing control flow
+  // main control flow
   if (at_lower_limit() && is_lowering) {
+    #ifdef DEBUG
+    Serial.println("BOTTOM\t" + String(total_time));
+    #endif
     stop_screen();
-  } else if (total_time < 0 && is_rising) {
+  } else if (total_time <= 0 && is_rising) {
     is_rising = false;
-    start_time = millis();
-    update_total_time();
-  } else if ((is_lowering && up_state) || (is_rising && dn_state)) {  // stop screen if either button pressed when raising/lowering
-    stop_screen();
-  } else if (up_state && !is_rising) {
-    raise_screen();
-  } else if (dn_state && !is_lowering && !at_lower_limit()) {
-    lower_screen();
+    // start_time = millis();
+    // update_total_time();
+    total_time = 0;  // reset timer
+    #ifdef DEBUG
+    Serial.println("TOP\t" + String(total_time));
+    #endif
   }
+  if ((!last_up_state && up_state) || (!last_dn_state && dn_state)) {
+    if ((is_lowering || is_rising) && (up_state || dn_state)) {  // stop screen if either button pressed when raising/lowering
+      stop_screen();
+    } else if (up_state && !is_rising) {
+      raise_screen();
+    } else if (dn_state && !is_lowering && !at_lower_limit()) {
+      lower_screen();
+    }
+  }
+  // update states
+  last_up_state = up_state;
+  last_dn_state = dn_state;
 }
+
 
 void lower_screen() {
   is_rising = false;
@@ -118,6 +132,9 @@ void lower_screen() {
   digitalWrite(DN_OUT, LOW);
   delay(200);
   digitalWrite(DN_OUT, HIGH);
+  #ifdef DEBUG
+  Serial.println("LOWER\t" + String(total_time));
+  #endif
 }
 
 void raise_screen() {
@@ -128,6 +145,9 @@ void raise_screen() {
   digitalWrite(UP_OUT, LOW);
   delay(200);
   digitalWrite(UP_OUT, HIGH);
+  #ifdef DEBUG
+  Serial.println("RAISE\t" + String(total_time));
+  #endif
 }
 
 void stop_screen() {
@@ -141,6 +161,10 @@ void stop_screen() {
   update_total_time();
   is_lowering = false;
   is_rising = false;
+
+  #ifdef DEBUG
+  Serial.println("STOP\t" + String(total_time));
+  #endif
 }
 
 void update_total_time(){
