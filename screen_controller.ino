@@ -4,20 +4,20 @@
 */
 
 // pins
-#define UP_IN 0
-#define DN_IN 1
-#define UP_OUT 4
-#define DN_OUT 3
+#define UP_IN 4
+#define DN_IN 3
+#define UP_OUT 12
+#define DN_OUT 13
 #define POT_IN 1
 
 // bedouncing
 unsigned long last_up_bedounce = 0;
 unsigned long last_dn_bedounce = 0;
-int bedounce_delay = 100;
-int up_state = LOW;
-int dn_state = LOW;
-int last_up_state = HIGH;
-int last_dn_state = HIGH;
+unsigned long bedounce_delay = 50;
+int up_state;
+int dn_state;
+int last_up_state = false;
+int last_dn_state = false;
 
 // ranges for pot to time mapping
 #define POT_MIN 0
@@ -46,55 +46,60 @@ void setup() {
 
   update_desired_time();
   total_time = 0;
+
+  Serial.begin(9600);
+  Serial.println("assup my dude");
 }
 
 void loop() {
   update_desired_time();
   update_total_time();
 
-  if (is_lowering && at_lower_limit()) {  // if screen reaches lower limit
-    stop_screen();
-  }
-  // else if (is_rising && total_time <= 0) {  // if screen reaches upper limit
-  //   stop_screen();
-  // }
-
   // bedouncing/input
-  int up_reading = !digitalRead(UP_IN);  // buttons are normally closed
-  int dn_reading = !digitalRead(DN_IN);
+  bool up_reading = !digitalRead(UP_IN);  // buttons are normally closed
+  bool dn_reading = !digitalRead(DN_IN);
+  // up_state = !digitalRead(UP_IN);  // buttons are normally closed
+  // dn_state = !digitalRead(DN_IN);
+  Serial.println("UPR: " + String(up_reading) + " DNR: " + String(dn_reading));
 
   // reset bedouncing timers
   if (up_reading != last_up_state) {
     last_up_bedounce = millis();
+    Serial.println("UP BOUNCE");
   }
   if (dn_reading != last_dn_state) {
     last_dn_bedounce = millis();
+    Serial.println("DN BOUNCE");
   }
 
   if ((millis() - last_up_bedounce) > bedounce_delay) {
     if (up_reading != up_state) {
-      last_up_state = up_state;
       up_state = up_reading;
+      Serial.println("UP: " + String(up_state));
     }
   }
   if ((millis() - last_dn_bedounce) > bedounce_delay) {
     if (dn_reading != dn_state) {
-      last_dn_state = dn_state;
       dn_state = dn_reading;
+      Serial.println("DN: " + String(dn_state));
     }
   }
+  last_up_state = up_reading;
+  last_dn_state = dn_reading;
 
-
-  if (up_state && is_rising) {
-    raise_screen();
-  } else if (dn_state && !is_lowering) {
-    lower_screen();
-  } else if ((is_lowering || is_rising) && (up_state || dn_state)){  // stop screen if either button pressed and raising/lowering
+  if (at_lower_limit() && is_lowering) {
     stop_screen();
+  } else if (is_lowering && up_state || is_rising && dn_state) {  // stop screen if either button pressed and raising/lowering
+    stop_screen();
+  } else if (up_state && !is_rising) {
+    raise_screen();
+  } else if (dn_state && !is_lowering && !at_lower_limit()) {
+    lower_screen();
   }
 }
 
 void lower_screen() {
+  Serial.println("lower_screen");
   is_rising = false;
   is_lowering = true;
   start_time = millis();
@@ -105,6 +110,7 @@ void lower_screen() {
 }
 
 void raise_screen() {
+  Serial.println("raise_screen");
   is_lowering = false;
   is_rising = true;
   start_time = millis();
@@ -115,6 +121,7 @@ void raise_screen() {
 }
 
 void stop_screen() {
+  Serial.println("stop_screen");
   // stop screen by pressing both
   digitalWrite(UP_OUT, LOW);
   digitalWrite(DN_OUT, LOW);
