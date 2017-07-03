@@ -3,6 +3,21 @@
   Creates a pseudo lower limit for the screen based on potentiometer value
 */
 
+// #define DEBUG
+
+#ifdef DEBUG
+  #define UP_IN 4
+  #define DN_IN 3
+  #define UP_OUT 12
+  #define DN_OUT 13
+  #define POT_IN 1
+#else
+  #define UP_IN 0
+  #define DN_IN 1
+  #define UP_OUT 4
+  #define DN_OUT 3
+  #define POT_IN 1
+#endif
 // pins
 #define UP_IN 4
 #define DN_IN 3
@@ -47,8 +62,10 @@ void setup() {
   update_desired_time();
   total_time = 0;
 
-  Serial.begin(9600);
-  Serial.println("assup my dude");
+  #ifdef DEBUG
+    Serial.begin(9600);
+    Serial.println("assup my dude");
+  #endif
 }
 
 void loop() {
@@ -60,28 +77,23 @@ void loop() {
   bool dn_reading = !digitalRead(DN_IN);
   // up_state = !digitalRead(UP_IN);  // buttons are normally closed
   // dn_state = !digitalRead(DN_IN);
-  Serial.println("UPR: " + String(up_reading) + " DNR: " + String(dn_reading));
 
   // reset bedouncing timers
   if (up_reading != last_up_state) {
     last_up_bedounce = millis();
-    Serial.println("UP BOUNCE");
   }
   if (dn_reading != last_dn_state) {
     last_dn_bedounce = millis();
-    Serial.println("DN BOUNCE");
   }
 
   if ((millis() - last_up_bedounce) > bedounce_delay) {
     if (up_reading != up_state) {
       up_state = up_reading;
-      Serial.println("UP: " + String(up_state));
     }
   }
   if ((millis() - last_dn_bedounce) > bedounce_delay) {
     if (dn_reading != dn_state) {
       dn_state = dn_reading;
-      Serial.println("DN: " + String(dn_state));
     }
   }
   last_up_state = up_reading;
@@ -99,7 +111,6 @@ void loop() {
 }
 
 void lower_screen() {
-  Serial.println("lower_screen");
   is_rising = false;
   is_lowering = true;
   start_time = millis();
@@ -110,7 +121,6 @@ void lower_screen() {
 }
 
 void raise_screen() {
-  Serial.println("raise_screen");
   is_lowering = false;
   is_rising = true;
   start_time = millis();
@@ -121,7 +131,6 @@ void raise_screen() {
 }
 
 void stop_screen() {
-  Serial.println("stop_screen");
   // stop screen by pressing both
   digitalWrite(UP_OUT, LOW);
   digitalWrite(DN_OUT, LOW);
